@@ -33,7 +33,7 @@ endfunc
 
 augroup cs_folds
     autocmd!
-    autocmd BufEnter *.cs setlocal foldtext=SummaryFolds()
+    " autocmd BufEnter *.cs setlocal foldtext=SummaryFolds()
 augroup END
 
 " type
