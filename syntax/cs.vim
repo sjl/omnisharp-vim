@@ -53,10 +53,10 @@ syn keyword csModifier			abstract const extern internal override private protect
 " constant
 syn keyword csConstant			false null true
 " exception
-syn keyword csException			try catch finally throw
+syn keyword csException			try catch finally throw when
 
 " TODO:
-syn keyword csUnspecifiedStatement	as base checked event fixed get in is lock operator out params ref set sizeof stackalloc this typeof unchecked unsafe using
+syn keyword csUnspecifiedStatement	as base checked event fixed get in is lock nameof operator out params ref set sizeof stackalloc this typeof unchecked unsafe using
 
 syn keyword csLinqKeyword               ascending by descending equals from group in into join let on orderby select where
 " TODO:
@@ -114,9 +114,8 @@ syn region csRegion matchgroup=csPreCondit start="^\s*#\s*region.*$"
 syn region csSummary start="^\s*/// <summary" end="^\(\s*///\)\@!" transparent fold keepend
 
 
-syn region csAttributeType start="\s*\["hs=e+1 end="[\(\]]"he=e-1 oneline
-syn region csClassType start="class"hs=s+6 end="[:\n{]"he=e-1 contains=csClass
-syn region csNewType start="new\>"hs=s+4 end="[\(\<{\[]"he=e-1 contains=csNew contains=csNewType
+syn region csClassType start="\(@\)\@<!class\>"hs=s+6 end="[:\n{]"he=e-1 contains=csClass
+syn region csNewType start="\(@\)\@<!new\>"hs=s+4 end="[\(\<{\[]"he=e-1 contains=csNew contains=csNewType
 syn region csIsType start="\v (is|as) "hs=s+4 end="\v[A-Za-z0-9]+" oneline contains=csIsAs
 syn keyword csNew new contained
 syn keyword csClass class contained
@@ -145,7 +144,6 @@ syn match   csNumber		"\<\d\+\([eE][-+]\=\d\+\)\=[fFdD]\>"
 hi def link csType			Type
 hi def link csNewType			Type
 hi def link csClassType			Type
-hi def link csAttributeType		Type
 hi def link csIsType			Type
 hi def link csStorage			StorageClass
 hi def link csClass			StorageClass

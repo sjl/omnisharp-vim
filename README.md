@@ -1,4 +1,4 @@
-![OmniSharp](logo.jpg)
+![OmniSharp](logo.png)
 
 # OmniSharp
 
@@ -25,6 +25,10 @@ Omnisharp-vim can now be run with the [omnisharp-roslyn server](https://github.c
     * Exact start match (case insensitive)
     * CamelCase completions
     * Subsequence match completions
+  * Completion snippets are supported. e.g. Console.WriteLine(TAB) (ENTER) will complete to Console.WriteLine(string value) and expand a dynamic snippet, this will place you in SELECT mode and the first method argument will be selected. 
+    * Requires [UltiSnips](https://github.com/SirVer/ultisnips) and supports standard C-x C-o completion, [Supertab](https://github.com/ervandew/supertab) and [Neocomplete](https://github.com/Shougo/neocomplete.vim).
+    * Requires `set completeopt-=preview` when using [Neocomplete](https://github.com/Shougo/neocomplete.vim) because of a compatibility issue with [UltiSnips](https://github.com/SirVer/ultisnips). 
+    * This functionality requires a recent version of Vim, you can check if your version is supported by running `:echo has("patch-7.3-598")`, it should output 1.
 
 * Jump to the definition of a type/variable/method
 * Find types/symbols interactively (requires [CtrlP](https://github.com/ctrlpvim/ctrlp.vim) plugin or [unite.vim](https://github.com/Shougo/unite.vim) plugin)
@@ -91,6 +95,8 @@ cd server
 xbuild
 ```
 
+If you installed the package with Vundle, you still need to build the server as above.
+
 Note that if you have Mono installed outside of the ["standard" paths](https://github.com/OmniSharp/omnisharp-server/blob/master/OmniSharp/Solution/AssemblySearch.cs#L35-L52) (for example, if it is installed via Boxen where your homebrew root is not `/usr/local/`, you'll need to either add the path to the `AssemblySearch.cs` before building, or symlink your installation to one of the standard paths.
 
 If you are planning to use OmniSharp-Roslyn, run the following commands:
@@ -129,13 +135,20 @@ Use your favourite way to install it.
 The vim plugin [syntastic] (https://github.com/scrooloose/syntastic) is needed for displaying code issues and syntax errors.
 Use your favourite way to install it.
 
-### (optional) Install ctrlp.vim or unite.vim
-[CtrlP](https://github.com/ctrlpvim/ctrlp.vim) or [unite.vim](https://github.com/Shougo/unite.vim) is needed if you want to use the Code Actions, Find Type and Find Symbol features.
-If you have installed both, you can choose one by `g:OmniSharp_selector_ui` variable.
+### (optional) Install ctrlp.vim, unite.vim or fzf.vim
+
+If you want to use the Code Actions, Find Type and Find Symbol features, you will need to install one of the following plugins:
+
+- [CtrlP](https://github.com/ctrlpvim/ctrlp.vim)
+- [unite.vim](https://github.com/Shougo/unite.vim)
+- [fzf.vim](https://github.com/junegunn/fzf.vim)
+
+If you have installed more than one, you can choose one by `g:OmniSharp_selector_ui` variable.
 
 ```vim
 let g:OmniSharp_selector_ui = 'unite'  " Use unite.vim
 let g:OmniSharp_selector_ui = 'ctrlp'  " Use ctrlp.vim
+let g:OmniSharp_selector_ui = 'fzf'    " Use fzf.vim
 ```
 
 ## How to use
@@ -334,6 +347,9 @@ nnoremap <leader>sp :OmniSharpStopServer<cr>
 nnoremap <leader>th :OmniSharpHighlightTypes<cr>
 "Don't ask to save when changing buffers (i.e. when jumping to a type definition)
 set hidden
+
+" Enable snippet completion, requires completeopt-=preview
+let g:OmniSharp_want_snippet=1
 ```
 
 

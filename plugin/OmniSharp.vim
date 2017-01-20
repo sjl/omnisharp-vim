@@ -1,13 +1,13 @@
-if !has('python')
-  echoerr 'Error: OmniSharp requires Vim compiled with +python'
-  finish
-endif
-
 if exists('g:OmniSharp_loaded')
   finish
 endif
 
 let g:OmniSharp_loaded = 1
+
+if !has('python')
+  echoerr 'Error: OmniSharp requires Vim compiled with +python'
+  finish
+endif
 
 "Load python/OmniSharp.py
 let s:py_path = join([expand('<sfile>:p:h:h'), 'python'], '/')
@@ -79,7 +79,7 @@ endif
 
 if !exists('g:OmniSharp_selector_ui')
   let g:OmniSharp_selector_ui = get(filter(
-  \   ['unite', 'ctrlp'],
+  \   ['unite', 'ctrlp', 'fzf'],
   \   '!empty(globpath(&runtimepath, printf("autoload/%s.vim", v:val), 1))'
   \ ), 0, '')
 endif
@@ -87,10 +87,17 @@ endif
 " Set g:OmniSharp_server_type to 'roslyn' or 'v1'
 let g:OmniSharp_server_type = get(g:, 'OmniSharp_server_type', 'v1')
 
+" Set default for snippet based completions
+let g:OmniSharp_want_snippet = get(g:, 'OmniSharp_want_snippet', 0)
+
 if !exists('g:OmniSharp_server_path')
   if g:OmniSharp_server_type ==# 'v1'
     let g:OmniSharp_server_path = join([expand('<sfile>:p:h:h'), 'server', 'OmniSharp', 'bin', 'Debug', 'OmniSharp.exe'], '/')
   else
-    let g:OmniSharp_server_path = join([expand('<sfile>:p:h:h'), 'omnisharp-roslyn', 'scripts', 'Omnisharp'], '/')
+    let g:OmniSharp_server_path = join([expand('<sfile>:p:h:h'), 'omnisharp-roslyn', 'artifacts', 'scripts', 'Omnisharp'], '/')
   endif
+endif
+
+if !exists('g:OmniSharp_prefer_global_sln')
+  let g:OmniSharp_prefer_global_sln = 0
 endif

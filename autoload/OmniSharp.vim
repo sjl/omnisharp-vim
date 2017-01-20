@@ -10,6 +10,8 @@ let s:server_files = '*.sln'
 let s:roslyn_server_files = 'project.json'
 let s:allUserTypes = ''
 let s:allUserInterfaces = ''
+let s:generated_snippets = {}
+let s:omnisharp_last_completion_dictionary = {}
 let g:serverSeenRunning = 0
 
 function! OmniSharp#Complete(findstart, base) abort
@@ -26,7 +28,12 @@ function! OmniSharp#Complete(findstart, base) abort
 
     return start
   else
-    return pyeval('Completion().get_completions("s:column", "a:base")')
+    let omnisharp_last_completion_result =  pyeval('Completion().get_completions("s:column", "a:base")')
+    let s:omnisharp_last_completion_dictionary = {}
+    for completion in omnisharp_last_completion_result
+        let s:omnisharp_last_completion_dictionary[get(completion, 'word')] = completion
+    endfor
+    return omnisharp_last_completion_result
   endif
 endfunction
 
@@ -128,13 +135,19 @@ function! OmniSharp#JumpToLocation(filename, line, column) abort
   endif
 endfunction
 
+function! OmniSharp#SelectorPluginError()
+  echoerr 'No selector plugin found.  Please install unite.vim, ctrlp.vim or fzf.vim'
+endfunction
+
 function! OmniSharp#FindSymbol() abort
   if g:OmniSharp_selector_ui ==? 'unite'
     call unite#start([['OmniSharp/findsymbols']])
   elseif g:OmniSharp_selector_ui ==? 'ctrlp'
     call ctrlp#init(ctrlp#OmniSharp#findsymbols#id())
+  elseif g:OmniSharp_selector_ui ==? 'fzf'
+    call fzf#OmniSharp#findsymbols()
   else
-    echo 'No selector plugin found.  Please install unite.vim or ctrlp.vim'
+    call OmniSharp#SelectorPluginError()
   endif
 endfunction
 
@@ -143,8 +156,10 @@ function! OmniSharp#FindType() abort
     call unite#start([['OmniSharp/findtype']])
   elseif g:OmniSharp_selector_ui ==? 'ctrlp'
     call ctrlp#init(ctrlp#OmniSharp#findtype#id())
+  elseif g:OmniSharp_selector_ui ==? 'fzf'
+    call fzf#OmniSharp#findtypes()
   else
-    echo 'No selector plugin found.  Please install unite.vim or ctrlp.vim'
+    call OmniSharp#SelectorPluginError()
   endif
 endfunction
 
@@ -160,8 +175,10 @@ function! OmniSharp#GetCodeActions(mode) range abort
     endif
     call ctrlp#OmniSharp#findcodeactions#setactions(a:mode, actions)
     call ctrlp#init(ctrlp#OmniSharp#findcodeactions#id())
+  elseif g:OmniSharp_selector_ui ==? 'fzf'
+    call fzf#OmniSharp#getcodeactions(a:mode)
   else
-    echo 'No selector plugin found.  Please install unite.vim or ctrlp.vim'
+    call OmniSharp#SelectorPluginError()
   endif
 endfunction
 
@@ -294,7 +311,7 @@ function! OmniSharp#RenameTo(renameto) abort
   let save_lazyredraw = &lazyredraw
   let save_eventignore = &eventignore
   let buf = bufnr('%')
-  let curpos = getcurpos()
+  let curpos = getpos('.')
   try
     set lazyredraw eventignore=all
     for change in result.Changes
@@ -583,24 +600,68 @@ function! OmniSharp#AppendCtrlPExtensions() abort
   endif
 endfunction
 
+function! OmniSharp#ExpandAutoCompleteSnippet()
+  if !g:OmniSharp_want_snippet
+    return
+  endif
+
+  if !exists("*UltiSnips#AddSnippetWithPriority")
+    echoerr "g:OmniSharp_want_snippet is enabled but this requires the UltiSnips plugin and it is not installed."
+    return
+  endif
+ 
+  let line = strpart(getline('.'), 0, col('.')-1)
+  let remove_whitespace_regex = '^\s*\(.\{-}\)\s*$'
+ 
+  let completion = matchstr(line, '.*\zs\s\W.\+(.*)')
+  let completion = substitute(completion, remove_whitespace_regex, '\1', '')
+ 
+  let should_expand_completion = len(completion) != 0
+  
+  if should_expand_completion
+    let completion = split(completion, '\.')[-1]
+    let completion = split(completion, 'new ')[-1]
+    let completion = split(completion, '= ')[-1]
+
+    if has_key(s:omnisharp_last_completion_dictionary, completion)
+      let snippet = get(get(s:omnisharp_last_completion_dictionary, completion, ''), 'snip','')
+      if !has_key(s:generated_snippets, completion)
+        call UltiSnips#AddSnippetWithPriority(completion, snippet, completion, 'iw', 'cs', 1)
+        let s:generated_snippets[completion] = snippet
+      endif
+      call UltiSnips#CursorMoved()
+      call UltiSnips#ExpandSnippetOrJump()
+    endif
+  endif
+endfunction
+
 function! s:find_solution_files() abort
   "get the path for the current buffer
   let dir = expand('%:p:h')
+  let lastfolder = ''
   let solution_files = []
 
-  while empty(solution_files)
-    let solution_files += s:globpath(dir , '*.sln')
-    if g:OmniSharp_server_type ==# 'roslyn'
-      let solution_files += s:globpath(dir, 'project.json')
+  while dir !=# lastfolder
+    if empty(solution_files)
+      let solution_files += s:globpath(dir, '*.sln')
+      if g:OmniSharp_server_type ==# 'roslyn'
+        let solution_files += s:globpath(dir, 'project.json')
+      endif
+
+      call filter(solution_files, 'filereadable(v:val)')
     endif
 
-    call filter(solution_files, 'filereadable(v:val)')
+    if g:OmniSharp_server_type ==# 'roslyn' && g:OmniSharp_prefer_global_sln
+      let global_solution_files = s:globpath(dir, 'global.json')
+      call filter(global_solution_files, 'filereadable(v:val)')
+      if !empty(global_solution_files)
+        let solution_files = [dir]
+        break
+      endif
+    endif
 
     let lastfolder = dir
     let dir = fnamemodify(dir, ':h')
-    if dir ==# lastfolder
-      break
-    endif
   endwhile
 
   if empty(solution_files) && g:OmniSharp_start_without_solution
@@ -611,8 +672,16 @@ function! s:find_solution_files() abort
 endfunction
 
 function! s:json_decode(json) abort
+  if a:json == ''
+    throw 'Empty JSON response from server'
+  endif
+
   let [null, true, false] = [0, 1, 0]
-  sandbox return eval(a:json)
+  try
+    sandbox return eval(a:json)
+  catch
+    throw 'Invalid JSON response from server: ' . a:json
+  endtry
 endfunction
 
 if has('patch-7.4.279')
